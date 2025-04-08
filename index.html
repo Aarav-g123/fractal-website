@@ -1,184 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fractal Explorer</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #1a1a1a;
-            color: white;
-            margin: 0;
-            padding: 20px;
-        }
-        .menu {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            max-width: 800px;
-            margin: 20px auto;
-        }
-        button {
-            padding: 15px;
-            background: #333;
-            border: 1px solid #555;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        button:hover {
-            background: #444;
-        }
-        canvas {
-            border: 1px solid #444;
-            margin: 20px auto;
-            display: block;
-        }
-        .controls {
-            text-align: center;
-            margin: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1 style="text-align: center">Fractal Explorer</h1>
-    
-    <div class="menu" id="mainMenu"></div>
-    <canvas id="fractalCanvas"></canvas>
-    <div class="controls" id="controls"></div>
+    <header>
+        <h1>Fractal Explorer</h1>
+        <div class="menu" id="mainMenu">
+            <button data-fractal="mandelbrot">Mandelbrot</button>
+            <button data-fractal="julia">Julia Set</button>
+            <button data-fractal="burning-ship">Burning Ship</button>
+        </div>
+    </header>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <script>
-class FractalExplorer {
-    constructor() {
-        this.canvas = document.getElementById('fractalCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.currentFractal = null;
-        this.zoomStack = [];
-        this.initMenu();
-    }
-
-    initMenu() {
-        const menu = document.getElementById('mainMenu');
-        const categories = [
-            ['Mandelbrot', this.showMandelbrot],
-            ['Julia Set', () => this.showJulia(-0.4, 0.6)],
-            ['Burning Ship', this.showBurningShip],
-            ['Sierpinski', this.showSierpinski],
-            ['Newton', this.showNewton],
-            ['3D Mandelbulb', this.showMandelbulb]
-        ];
-
-        categories.forEach(([name, handler]) => {
-            const btn = document.createElement('button');
-            btn.textContent = name;
-            btn.onclick = handler.bind(this);
-            menu.appendChild(btn);
-        });
-    }
-
-    showMandelbrot() {
-        this.currentFractal = new Mandelbrot(this.canvas);
-        this.setupControls();
-    }
-
-    showJulia(real, imag) {
-        this.currentFractal = new Julia(this.canvas, real, imag);
-        this.setupControls();
-    }
-
-    showBurningShip() {
-        this.currentFractal = new BurningShip(this.canvas);
-        this.setupControls();
-    }
-
-    showSierpinski() {
-        this.currentFractal = new Sierpinski(this.canvas);
-        this.setupControls();
-    }
-
-    showNewton() {
-        this.currentFractal = new Newton(this.canvas);
-        this.setupControls();
-    }
-
-    setupControls() {
-        const controls = document.getElementById('controls');
-        controls.innerHTML = `
-            <button onclick="explorer.zoomIn()">Zoom In</button>
-            <button onclick="explorer.zoomOut()">Zoom Out</button>
-            <input type="range" id="iterations" min="50" max="1000" value="100">
-            <label for="iterations">Iterations</label>
-        `;
-
-        document.getElementById('iterations').oninput = (e) => {
-            this.currentFractal.iterations = parseInt(e.target.value);
-            this.currentFractal.draw();
-        };
-    }
-
-    zoomIn() {
-        // Add zoom logic
-    }
-
-    zoomOut() {
-        // Add zoom out logic
-    }
-}
-
-class Mandelbrot {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.iterations = 100;
-        this.init();
-    }
-
-    init() {
-        this.canvas.width = 800;
-        this.canvas.height = 800;
-        this.draw();
-    }
-
-    draw() {
-        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
-        
-        for(let x = 0; x < this.canvas.width; x++) {
-            for(let y = 0; y < this.canvas.height; y++) {
-                let zx = 0, zy = 0;
-                let cx = (x - this.canvas.width/2) * 4/this.canvas.width;
-                let cy = (y - this.canvas.height/2) * 4/this.canvas.height;
-                let i = 0;
+    <main>
+        <canvas id="fractalCanvas"></canvas>
+        <div class="controls" id="controls">
+            <div class="control-group">
+                <label for="colorScheme">Color Scheme:</label>
+                <select id="colorScheme">
+                    <option value="classic">Classic</option>
+                    <option value="blue">Blue</option>
+                    <option value="grayscale">Grayscale</option>
+                </select>
                 
-                while(i < this.iterations && (zx*zx + zy*zy) < 4) {
-                    const temp = zx*zx - zy*zy + cx;
-                    zy = 2*zx*zy + cy;
-                    zx = temp;
-                    i++;
-                }
-                
-                const idx = (x + y * this.canvas.width) * 4;
-                const color = this.getColor(i);
-                imageData.data[idx] = color.r;
-                imageData.data[idx+1] = color.g;
-                imageData.data[idx+2] = color.b;
-                imageData.data[idx+3] = 255;
-            }
-        }
-        
-        this.ctx.putImageData(imageData, 0, 0);
-    }
+                <label for="iterations">Iterations:</label>
+                <input type="range" id="iterations" min="50" max="1000" value="100">
+                <span id="iterValue">100</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="reset">Reset View</button>
+                <button id="zoomOut">Zoom Out</button>
+                <button class="quality-preset active" data-quality="1">High Quality</button>
+                <button class="quality-preset" data-quality="0.5">Performance</button>
+            </div>
+        </div>
+    </main>
 
-    getColor(i) {
-        // Add color mapping logic
-        return { r: i%255, g: i%255, b: i%255 };
-    }
-}
-
-// Add other fractal classes (Julia, BurningShip, etc.) following similar patterns
-
-const explorer = new FractalExplorer();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
