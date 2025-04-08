@@ -104,6 +104,7 @@ class FractalRenderer {
         this.iterations = 100;
         this.colorScheme = 'classic';
         this.quality = 1;
+        this.lastPanTime = 0;
         this.initEventListeners();
         this.initWorker();
     }
@@ -121,11 +122,17 @@ class FractalRenderer {
 
         const moveInteraction = (x, y) => {
             if (!isDragging) return;
+            const now = Date.now();
+            if (now - this.lastPanTime < 16) return;
+            this.lastPanTime = now;
+            
             const dx = x - lastX;
             const dy = y - lastY;
             lastX = x;
             lastY = y;
-            this.pan(dx, dy);
+            
+            this.pan(dx * 0.7, dy * 0.7);
+            this.draw({ quality: 0.3 });
         };
 
         const endInteraction = () => {
@@ -133,24 +140,37 @@ class FractalRenderer {
             this.draw();
         };
 
-        this.canvas.addEventListener('mousedown', (e) => startInteraction(e.offsetX, e.offsetY));
-        this.canvas.addEventListener('mousemove', (e) => moveInteraction(e.offsetX, e.offsetY));
+        this.canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startInteraction(e.offsetX, e.offsetY);
+        });
+        this.canvas.addEventListener('mousemove', (e) => {
+            e.preventDefault();
+            moveInteraction(e.offsetX, e.offsetY);
+        });
         this.canvas.addEventListener('mouseup', endInteraction);
         this.canvas.addEventListener('mouseleave', endInteraction);
 
         this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             const rect = this.canvas.getBoundingClientRect();
-            startInteraction(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            const touch = e.touches[0];
+            startInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
         });
         this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
             const rect = this.canvas.getBoundingClientRect();
-            moveInteraction(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            const touch = e.touches[0];
+            moveInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
         });
         this.canvas.addEventListener('touchend', endInteraction);
 
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
-            this.zoom(e.offsetX, e.offsetY, e.deltaY > 0 ? 0.8 : 1.2);
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            this.zoom(x, y, e.deltaY > 0 ? 0.8 : 1.2);
         }, { passive: false });
     }
 
@@ -195,7 +215,6 @@ class FractalRenderer {
         this.xmax -= dxWorld;
         this.ymin += dyWorld;
         this.ymax += dyWorld;
-        this.draw({ quality: 0.5 });
     }
 
     zoom(x, y, factor) {
