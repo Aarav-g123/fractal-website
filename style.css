@@ -67,15 +67,17 @@ canvas {
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     touch-action: none;
+    cursor: crosshair;
 }
 
 .controls {
     margin-top: 2rem;
-    background-color: var(--control-bg);
+    background: rgba(0,0,0,0.7);
     padding: 1.5rem;
     border-radius: 8px;
     width: 100%;
     max-width: 800px;
+    backdrop-filter: blur(5px);
 }
 
 .control-group {
@@ -126,11 +128,11 @@ label {
 }
 
 .quality-preset {
-    background: #444 !important;
-    padding: 0.5rem !important;
+    background: #444;
+    padding: 0.5rem;
     font-size: 0.9rem;
 }
 
 .quality-preset.active {
-    background: var(--accent-color) !important;
+    background: var(--accent-color);
 }
