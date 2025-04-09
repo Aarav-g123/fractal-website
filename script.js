@@ -153,6 +153,16 @@ class FractalRenderer {
                 this.ymin = newYmin;
                 this.ymax = newYmax;
             }
+            else if (this instanceof Julia && Math.abs(x2 - x1) < 2 && Math.abs(y2 - y1) < 2) {
+                const x = (rect.x1 + rect.x2) / 2;
+                const y = (rect.y1 + rect.y2) / 2;
+                const jx = this.xmin + (x / this.canvas.width) * (this.xmax - this.xmin);
+                const jy = this.ymin + (y / this.canvas.height) * (this.ymax - this.ymin);
+                this.jx = jx;
+                this.jy = jy;
+                document.getElementById('juliaX').value = jx.toFixed(3);
+                document.getElementById('juliaY').value = jy.toFixed(3);
+            }
             
             this.selectionRect = null;
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -310,12 +320,6 @@ class Julia extends FractalRenderer {
     getFractalParams() {
         return { jx: this.jx, jy: this.jy };
     }
-
-    updateConstants(x, y) {
-        this.jx = parseFloat(x);
-        this.jy = parseFloat(y);
-        this.draw();
-    }
 }
 
 class BurningShip extends FractalRenderer {
@@ -351,12 +355,15 @@ document.querySelectorAll('[data-fractal]').forEach(button => {
         switch(button.dataset.fractal) {
             case 'mandelbrot':
                 newFractal = new Mandelbrot(canvas);
+                document.querySelector('.julia-controls').style.display = 'none';
                 break;
             case 'julia':
                 newFractal = new Julia(canvas);
+                document.querySelector('.julia-controls').style.display = 'flex';
                 break;
             case 'burning-ship':
                 newFractal = new BurningShip(canvas);
+                document.querySelector('.julia-controls').style.display = 'none';
                 break;
         }
         newFractal.iterations = currentIterations;
@@ -394,4 +401,26 @@ document.querySelectorAll('.quality-preset').forEach(button => {
         currentFractal.quality = parseFloat(button.dataset.quality);
         currentFractal.draw();
     });
+});
+
+document.getElementById('randomJulia').addEventListener('click', () => {
+    currentFractal.jx = (Math.random() * 2 - 1).toFixed(3);
+    currentFractal.jy = (Math.random() * 2 - 1).toFixed(3);
+    document.getElementById('juliaX').value = currentFractal.jx;
+    document.getElementById('juliaY').value = currentFractal.jy;
+    currentFractal.draw();
+});
+
+document.getElementById('juliaX').addEventListener('input', (e) => {
+    if (currentFractal instanceof Julia) {
+        currentFractal.jx = parseFloat(e.target.value);
+        currentFractal.draw();
+    }
+});
+
+document.getElementById('juliaY').addEventListener('input', (e) => {
+    if (currentFractal instanceof Julia) {
+        currentFractal.jy = parseFloat(e.target.value);
+        currentFractal.draw();
+    }
 });
