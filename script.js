@@ -310,6 +310,12 @@ class Julia extends FractalRenderer {
     getFractalParams() {
         return { jx: this.jx, jy: this.jy };
     }
+
+    updateConstants(x, y) {
+        this.jx = parseFloat(x);
+        this.jy = parseFloat(y);
+        this.draw();
+    }
 }
 
 class BurningShip extends FractalRenderer {

@@ -136,3 +136,20 @@ label {
 .quality-preset.active {
     background: var(--accent-color);
 }
+
+.julia-controls {
+    display: none !important;
+}
+
+.julia-controls.visible {
+    display: flex !important;
+}
+
+.julia-input {
+    width: 80px;
+    background: var(--control-bg);
+    border: 1px solid #444;
+    color: var(--text-color);
+    padding: 0.3rem;
+    border-radius: 4px;
+}
