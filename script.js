@@ -19,54 +19,162 @@ class FractalWorker extends Worker {
                 }))}
             };
 
+            // Add these helper functions at the top of worker code
+            ${Complex.toString()}
+            ${complex.toString()}
+            ${sin.toString()}
+            ${cos.toString()}
+
             self.onmessage = function(e) {
                 try {
                     const { data } = e;
                     const imageData = new Uint8ClampedArray(data.width * data.height * 4);
                     const maxIter = Math.max(data.iterations, 1);
                     
-                    for(let y = 0; y < data.height; y++) {
-                        for(let x = 0; x < data.width; x++) {
-                            let zx, zy, cx, cy;
-                            let iter = 0;
+                    if (data.type === 'sierpinski' || data.type === 'barnsley' || data.type === 'koch') {
+                        // IFS implementation
+                        let x = 0, y = 0;
+                        
+                        for(let i = 0; i < maxIter; i++) {
+                            let nextX, nextY;
+                            const r = Math.random();
                             
-                            cx = data.xmin + (x / data.width) * (data.xmax - data.xmin);
-                            cy = data.ymin + (y / data.height) * (data.ymax - data.ymin);
-
-                            switch(data.type) {
-                                case 'mandelbrot':
-                                    zx = zy = 0;
-                                    while(iter < maxIter && zx*zx + zy*zy < 4) {
-                                        [zx, zy] = [zx*zx - zy*zy + cx, 2*zx*zy + cy];
-                                        iter++;
-                                    }
-                                    break;
-
-                                case 'julia':
-                                    zx = cx;
-                                    zy = cy;
-                                    while(iter < maxIter && zx*zx + zy*zy < 4) {
-                                        [zx, zy] = [zx*zx - zy*zy + data.jx, 2*zx*zy + data.jy];
-                                        iter++;
-                                    }
-                                    break;
-
-                                case 'burning-ship':
-                                    zx = zy = 0;
-                                    while(iter < maxIter && zx*zx + zy*zy < 4) {
-                                        [zx, zy] = [zx*zx - zy*zy + cx, Math.abs(2*zx*zy) + cy];
-                                        iter++;
-                                    }
-                                    break;
+                            if (data.type === 'sierpinski') {
+                                const point = Math.floor(r * 3);
+                                const vertices = [
+                                    {x: -1, y: -1},
+                                    {x: 1, y: -1},
+                                    {x: 0, y: 1}
+                                ];
+                                nextX = (x + vertices[point].x) / 2;
+                                nextY = (y + vertices[point].y) / 2;
+                            } else if (data.type === 'barnsley') {
+                                if (r < 0.01) {
+                                    nextX = 0;
+                                    nextY = 0.16 * y;
+                                } else if (r < 0.86) {
+                                    nextX = 0.85 * x + 0.04 * y;
+                                    nextY = -0.04 * x + 0.85 * y + 1.6;
+                                } else if (r < 0.93) {
+                                    nextX = 0.2 * x - 0.26 * y;
+                                    nextY = 0.23 * x + 0.22 * y + 1.6;
+                                } else {
+                                    nextX = -0.15 * x + 0.28 * y;
+                                    nextY = 0.26 * x + 0.24 * y + 0.44;
+                                }
+                            } else if (data.type === 'koch') {
+                                const point = Math.floor(r * 4);
+                                const vertices = [
+                                    {x: -1, y: -0.5},
+                                    {x: -0.5, y: 0.5},
+                                    {x: 0.5, y: 0.5},
+                                    {x: 1, y: -0.5}
+                                ];
+                                nextX = (x + vertices[point].x) / 2;
+                                nextY = (y + vertices[point].y) / 2;
                             }
-
-                            const palette = COLOR_SCHEMES[data.colorScheme] || COLOR_SCHEMES.classic;
-                            const colorIdx = Math.min(Math.floor((iter / maxIter) * (palette.length - 1)), palette.length - 1);
-                            const color = iter >= maxIter ? [0,0,0] : palette[colorIdx];
                             
-                            const idx = (y * data.width + x) * 4;
-                            imageData.set(color, idx);
-                            imageData[idx+3] = 255;
+                            x = nextX;
+                            y = nextY;
+                            
+                            if (i > 20) {
+                                const px = Math.floor((x + 2) * data.width / 4);
+                                const py = Math.floor((y + 2) * data.height / 4);
+                                if (px >= 0 && px < data.width && py >= 0 && py < data.height) {
+                                    const idx = (py * data.width + px) * 4;
+                                    const color = COLOR_SCHEMES[data.colorScheme][0];
+                                    imageData[idx] = color[0];
+                                    imageData[idx + 1] = color[1];
+                                    imageData[idx + 2] = color[2];
+                                    imageData[idx + 3] = 255;
+                                }
+                            }
+                        }
+                    } else if (data.type === 'newton' || data.type === 'nova') {
+                        // Newton fractal implementation
+                        for(let y = 0; y < data.height; y++) {
+                            for(let x = 0; x < data.width; x++) {
+                                let zx = data.xmin + (x / data.width) * (data.xmax - data.xmin);
+                                let zy = data.ymin + (y / data.height) * (data.ymax - data.ymin);
+                                let iter = 0;
+                                
+                                const z = complex(zx, zy);
+                                while(iter < maxIter) {
+                                    const z_old = complex(zx, zy);
+                                    let z_new;
+                                    
+                                    if (data.function === 'z3') {
+                                        z_new = z_old.sub(z_old.pow(3).sub(complex(1, 0)).div(z_old.pow(2).mul(complex(3, 0))));
+                                    } else if (data.function === 'z4') {
+                                        z_new = z_old.sub(z_old.pow(4).sub(complex(1, 0)).div(z_old.pow(3).mul(complex(4, 0))));
+                                    } else {
+                                        z_new = z_old.sub(sin(z_old).div(cos(z_old)));
+                                    }
+                                    
+                                    if (z_new.sub(z_old).abs() < 0.000001) break;
+                                    zx = z_new.re;
+                                    zy = z_new.im;
+                                    iter++;
+                                }
+                                
+                                const palette = COLOR_SCHEMES[data.colorScheme] || COLOR_SCHEMES.classic;
+                                const colorIdx = Math.min(Math.floor((iter / maxIter) * (palette.length - 1)), palette.length - 1);
+                                const color = iter >= maxIter ? [0,0,0] : palette[colorIdx];
+                                
+                                const idx = (y * data.width + x) * 4;
+                                imageData[idx] = color[0];
+                                imageData[idx + 1] = color[1];
+                                imageData[idx + 2] = color[2];
+                                imageData[idx + 3] = 255;
+                            }
+                        }
+                    } else {
+                        // Existing implementation for classic sets
+                        for(let y = 0; y < data.height; y++) {
+                            for(let x = 0; x < data.width; x++) {
+                                let zx, zy, cx, cy;
+                                let iter = 0;
+                                
+                                cx = data.xmin + (x / data.width) * (data.xmax - data.xmin);
+                                cy = data.ymin + (y / data.height) * (data.ymax - data.ymin);
+
+                                switch(data.type) {
+                                    case 'mandelbrot':
+                                        zx = zy = 0;
+                                        while(iter < maxIter && zx*zx + zy*zy < 4) {
+                                            [zx, zy] = [zx*zx - zy*zy + cx, 2*zx*zy + cy];
+                                            iter++;
+                                        }
+                                        break;
+
+                                    case 'julia':
+                                        zx = cx;
+                                        zy = cy;
+                                        while(iter < maxIter && zx*zx + zy*zy < 4) {
+                                            [zx, zy] = [zx*zx - zy*zy + data.jx, 2*zx*zy + data.jy];
+                                            iter++;
+                                        }
+                                        break;
+
+                                    case 'burning-ship':
+                                        zx = zy = 0;
+                                        while(iter < maxIter && zx*zx + zy*zy < 4) {
+                                            [zx, zy] = [zx*zx - zy*zy + cx, Math.abs(2*zx*zy) + cy];
+                                            iter++;
+                                        }
+                                        break;
+                                }
+
+                                const palette = COLOR_SCHEMES[data.colorScheme] || COLOR_SCHEMES.classic;
+                                const colorIdx = Math.min(Math.floor((iter / maxIter) * (palette.length - 1)), palette.length - 1);
+                                const color = iter >= maxIter ? [0,0,0] : palette[colorIdx];
+                                
+                                const idx = (y * data.width + x) * 4;
+                                imageData[idx] = color[0];
+                                imageData[idx + 1] = color[1];
+                                imageData[idx + 2] = color[2];
+                                imageData[idx + 3] = 255;
+                            }
                         }
                     }
 
@@ -337,6 +445,125 @@ class BurningShip extends FractalRenderer {
     }
 }
 
+class Complex {
+    constructor(re, im) {
+        this.re = re;
+        this.im = im;
+    }
+
+    add(other) {
+        return new Complex(this.re + other.re, this.im + other.im);
+    }
+
+    sub(other) {
+        return new Complex(this.re - other.re, this.im - other.im);
+    }
+
+    mul(other) {
+        return new Complex(
+            this.re * other.re - this.im * other.im,
+            this.re * other.im + this.im * other.re
+        );
+    }
+
+    div(other) {
+        const denom = other.re * other.re + other.im * other.im;
+        return new Complex(
+            (this.re * other.re + this.im * other.im) / denom,
+            (this.im * other.re - this.re * other.im) / denom
+        );
+    }
+
+    pow(n) {
+        let result = new Complex(1, 0);
+        for (let i = 0; i < n; i++) {
+            result = result.mul(this);
+        }
+        return result;
+    }
+
+    abs() {
+        return Math.sqrt(this.re * this.re + this.im * this.im);
+    }
+}
+
+// Helper functions for the worker
+function complex(re, im) {
+    return new Complex(re, im);
+}
+
+function sin(z) {
+    return new Complex(
+        Math.sin(z.re) * Math.cosh(z.im),
+        Math.cos(z.re) * Math.sinh(z.im)
+    );
+}
+
+function cos(z) {
+    return new Complex(
+        Math.cos(z.re) * Math.cosh(z.im),
+        -Math.sin(z.re) * Math.sinh(z.im)
+    );
+}
+
+class IFSFractal extends FractalRenderer {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'ifs';
+        this.iterations = 10000;
+        this.points = [];
+    }
+
+    getFractalParams() {
+        return {
+            ifsType: this.ifsType,
+            iterations: this.iterations
+        };
+    }
+}
+
+class Sierpinski extends IFSFractal {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'sierpinski';
+    }
+}
+
+class BarnsleyFern extends IFSFractal {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'barnsley';
+    }
+}
+
+class KochSnowflake extends IFSFractal {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'koch';
+    }
+}
+
+class NewtonFractal extends FractalRenderer {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'newton';
+        this.function = 'z3';
+    }
+
+    getFractalParams() {
+        return {
+            function: this.function
+        };
+    }
+}
+
+class NovaFractal extends NewtonFractal {
+    constructor(canvas) {
+        super(canvas);
+        this.type = 'nova';
+    }
+}
+
 const canvas = document.getElementById('fractalCanvas');
 let currentFractal = new Mandelbrot(canvas);
 
@@ -355,16 +582,45 @@ document.querySelectorAll('[data-fractal]').forEach(button => {
         switch(button.dataset.fractal) {
             case 'mandelbrot':
                 newFractal = new Mandelbrot(canvas);
-                document.querySelector('.julia-controls').style.display = 'none';
+                hideAllControls();
                 break;
             case 'julia':
                 newFractal = new Julia(canvas);
+                hideAllControls();
                 document.querySelector('.julia-controls').style.display = 'flex';
                 break;
             case 'burning-ship':
                 newFractal = new BurningShip(canvas);
-                document.querySelector('.julia-controls').style.display = 'none';
+                hideAllControls();
                 break;
+            case 'sierpinski':
+                newFractal = new Sierpinski(canvas);
+                hideAllControls();
+                document.querySelector('.ifs-controls').style.display = 'flex';
+                break;
+            case 'barnsley':
+                newFractal = new BarnsleyFern(canvas);
+                hideAllControls();
+                document.querySelector('.ifs-controls').style.display = 'flex';
+                break;
+            case 'koch':
+                newFractal = new KochSnowflake(canvas);
+                hideAllControls();
+                document.querySelector('.ifs-controls').style.display = 'flex';
+                break;
+            case 'newton':
+                newFractal = new NewtonFractal(canvas);
+                hideAllControls();
+                document.querySelector('.newton-controls').style.display = 'flex';
+                break;
+            case 'nova':
+                newFractal = new NovaFractal(canvas);
+                hideAllControls();
+                document.querySelector('.newton-controls').style.display = 'flex';
+                break;
+            default:
+                console.error('Unknown fractal type:', button.dataset.fractal);
+                return;
         }
         newFractal.iterations = currentIterations;
         newFractal.colorScheme = currentColorScheme;
@@ -421,6 +677,29 @@ document.getElementById('juliaX').addEventListener('input', (e) => {
 document.getElementById('juliaY').addEventListener('input', (e) => {
     if (currentFractal instanceof Julia) {
         currentFractal.jy = parseFloat(e.target.value);
+        currentFractal.draw();
+    }
+});
+
+// Add helper function to hide all special controls
+function hideAllControls() {
+    document.querySelector('.julia-controls').style.display = 'none';
+    document.querySelector('.newton-controls').style.display = 'none';
+    document.querySelector('.ifs-controls').style.display = 'none';
+}
+
+// Add event listeners for new controls
+document.getElementById('newtonFunction').addEventListener('change', (e) => {
+    if (currentFractal instanceof NewtonFractal) {
+        currentFractal.function = e.target.value;
+        currentFractal.draw();
+    }
+});
+
+document.getElementById('ifsIterations').addEventListener('input', (e) => {
+    if (currentFractal instanceof IFSFractal) {
+        currentFractal.iterations = parseInt(e.target.value);
+        document.getElementById('ifsIterValue').textContent = e.target.value;
         currentFractal.draw();
     }
 });

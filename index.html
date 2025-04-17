@@ -3,16 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fractal Explorer</title>
+    <title>Advanced Fractal Explorer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Fractal Explorer</h1>
+        <h1>Advanced Fractal Explorer</h1>
         <div class="menu" id="mainMenu">
-            <button data-fractal="mandelbrot">Mandelbrot</button>
-            <button data-fractal="julia">Julia Set</button>
-            <button data-fractal="burning-ship">Burning Ship</button>
+            <div class="menu-category">
+                <h3>Classic Sets</h3>
+                <button data-fractal="mandelbrot">Mandelbrot</button>
+                <button data-fractal="julia">Julia Set</button>
+                <button data-fractal="burning-ship">Burning Ship</button>
+            </div>
+            <div class="menu-category">
+                <h3>IFS Fractals</h3>
+                <button data-fractal="sierpinski">Sierpinski</button>
+                <button data-fractal="barnsley">Barnsley Fern</button>
+                <button data-fractal="koch">Koch Snowflake</button>
+            </div>
+            <div class="menu-category">
+                <h3>Newton Fractals</h3>
+                <button data-fractal="newton">Newton Set</button>
+                <button data-fractal="nova">Nova Fractal</button>
+            </div>
         </div>
     </header>
 
@@ -44,6 +58,21 @@
                 <button id="zoomOut">Zoom Out</button>
                 <button class="quality-preset active" data-quality="1">High Quality</button>
                 <button class="quality-preset" data-quality="0.5">Performance</button>
+            </div>
+
+            <div class="control-group newton-controls" style="display: none;">
+                <label>Function:</label>
+                <select id="newtonFunction">
+                    <option value="z3">z³ - 1</option>
+                    <option value="z4">z⁴ - 1</option>
+                    <option value="sin">sin(z)</option>
+                </select>
+            </div>
+
+            <div class="control-group ifs-controls" style="display: none;">
+                <label>IFS Parameters:</label>
+                <input type="range" id="ifsIterations" min="1000" max="100000" value="10000">
+                <span id="ifsIterValue">10000</span>
             </div>
         </div>
     </main>
