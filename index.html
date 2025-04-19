@@ -47,10 +47,24 @@
             </div>
             
             <div class="control-group julia-controls" style="display: none;">
-                <label>Julia Constant:</label>
-                <input type="number" id="juliaX" step="0.01" value="-0.4" class="julia-input">
-                <input type="number" id="juliaY" step="0.01" value="0.6" class="julia-input">
+                <label>Julia Constant (re + im i):</label>
+                <input type="number" id="juliaReal" step="0.01" value="-0.4">
+                <input type="number" id="juliaImag" step="0.01" value="0.6">
                 <button id="randomJulia">Random</button>
+            </div>
+
+            <div class="control-group newton-controls" style="display: none;">
+                <label>Function:</label>
+                <input type="text" id="newtonFunction" value="z^3 - 1" placeholder="e.g., z^3 - 1">
+                <label>Iterations:</label>
+                <input type="range" id="newtonIterations" min="50" max="200" value="100">
+                <span id="newtonIterValue">100</span>
+            </div>
+
+            <div class="control-group ifs-controls" style="display: none;">
+                <label>IFS Iterations:</label>
+                <input type="range" id="ifsIterations" min="1000" max="100000" value="10000">
+                <span id="ifsIterValue">10000</span>
             </div>
 
             <div class="control-group">
@@ -58,21 +72,6 @@
                 <button id="zoomOut">Zoom Out</button>
                 <button class="quality-preset active" data-quality="1">High Quality</button>
                 <button class="quality-preset" data-quality="0.5">Performance</button>
-            </div>
-
-            <div class="control-group newton-controls" style="display: none;">
-                <label>Function:</label>
-                <select id="newtonFunction">
-                    <option value="z3">z³ - 1</option>
-                    <option value="z4">z⁴ - 1</option>
-                    <option value="sin">sin(z)</option>
-                </select>
-            </div>
-
-            <div class="control-group ifs-controls" style="display: none;">
-                <label>IFS Parameters:</label>
-                <input type="range" id="ifsIterations" min="1000" max="100000" value="10000">
-                <span id="ifsIterValue">10000</span>
             </div>
         </div>
     </main>
