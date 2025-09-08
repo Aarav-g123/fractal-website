@@ -1,2 +1,2 @@
 # fractal-website
-Source-code for my fractal-webiste
+Source code for my fractal website.
