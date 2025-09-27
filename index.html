@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Fractal Explorer</title>
+    <title>Fractal Explorer</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
             <h1>Fractal Explorer</h1>
-            <p class="subtitle">Discover the beauty of mathematical patterns</p>
         </header>
 
         <nav class="fractal-nav">
@@ -28,7 +27,6 @@
                 <div class="nav-buttons">
                     <button class="nav-btn" data-fractal="sierpinski">Sierpinski</button>
                     <button class="nav-btn" data-fractal="barnsley">Barnsley Fern</button>
-                    <button class="nav-btn" data-fractal="koch">Koch Snowflake</button>
                 </div>
             </div>
             
@@ -36,7 +34,6 @@
                 <h3>Newton Fractals</h3>
                 <div class="nav-buttons">
                     <button class="nav-btn" data-fractal="newton">Newton Set</button>
-                    <button class="nav-btn" data-fractal="nova">Nova Fractal</button>
                 </div>
             </div>
         </nav>
@@ -46,7 +43,6 @@
                 <canvas id="fractalCanvas"></canvas>
                 <div class="canvas-overlay">
                     <div class="zoom-info">Zoom: 1.00x</div>
-                    <div class="coordinates">X: 0.000, Y: 0.000</div>
                 </div>
             </div>
 
@@ -54,9 +50,8 @@
                 <div class="panel-section">
                     <h4>Rendering</h4>
                     <div class="control-group">
-                        <label for="iterations">Iterations</label>
-                        <input type="range" id="iterations" min="50" max="2000" value="200">
-                        <span id="iterValue">200</span>
+                        <label for="iterations">Iterations: <span id="iterValue">100</span></label>
+                        <input type="range" id="iterations" min="50" max="1000" value="100">
                     </div>
                     
                     <div class="control-group">
@@ -65,40 +60,22 @@
                             <option value="classic">Classic</option>
                             <option value="blue">Ocean Blue</option>
                             <option value="fire">Fire</option>
-                            <option value="forest">Forest</option>
                             <option value="grayscale">Grayscale</option>
                         </select>
-                    </div>
-
-                    <div class="control-group">
-                        <label>Quality</label>
-                        <div class="quality-buttons">
-                            <button class="quality-btn active" data-quality="1">High</button>
-                            <button class="quality-btn" data-quality="0.7">Balanced</button>
-                            <button class="quality-btn" data-quality="0.4">Fast</button>
-                        </div>
                     </div>
                 </div>
 
                 <div class="panel-section julia-controls hidden">
                     <h4>Julia Parameters</h4>
                     <div class="control-group">
-                        <label for="juliaReal">Real Component</label>
-                        <input type="number" id="juliaReal" step="0.001" value="-0.4">
+                        <label for="juliaReal">Real: <span id="juliaRealValue">-0.4</span></label>
+                        <input type="range" id="juliaReal" min="-1" max="1" step="0.01" value="-0.4">
                     </div>
                     <div class="control-group">
-                        <label for="juliaImag">Imaginary Component</label>
-                        <input type="number" id="juliaImag" step="0.001" value="0.6">
+                        <label for="juliaImag">Imaginary: <span id="juliaImagValue">0.6</span></label>
+                        <input type="range" id="juliaImag" min="-1" max="1" step="0.01" value="0.6">
                     </div>
                     <button id="randomJulia" class="secondary-btn">Randomize</button>
-                </div>
-
-                <div class="panel-section newton-controls hidden">
-                    <h4>Newton Parameters</h4>
-                    <div class="control-group">
-                        <label for="newtonFunction">Function</label>
-                        <input type="text" id="newtonFunction" value="z^3 - 1" placeholder="e.g., z^3 - 1">
-                    </div>
                 </div>
 
                 <div class="panel-section">
@@ -110,16 +87,10 @@
                 </div>
             </aside>
         </main>
-
-        <footer class="app-footer">
-            <p>Click and drag to zoom • Use mouse wheel for precise zoom</p>
-        </footer>
     </div>
 
     <script src="js/complex.js"></script>
-    <script src="js/fractal-worker.js"></script>
     <script src="js/fractal-renderer.js"></script>
-    <script src="js/fractal-types.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

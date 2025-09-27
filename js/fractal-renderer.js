@@ -1,36 +1,24 @@
-class FractalWorker extends Worker {
-    constructor() {
-        const blob = new Blob([FRACTAL_WORKER_CODE], { type: 'application/javascript' });
-        super(URL.createObjectURL(blob));
-    }
-}
-
 class FractalRenderer {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d', { willReadFrequently: true });
+        this.ctx = canvas.getContext('2d');
         this.setCanvasSize();
         
-        this.worker = new FractalWorker();
         this.isRendering = false;
-        this.renderQueue = null;
-        this.selectionRect = null;
         this.zoomStack = [];
+        this.zoomLevel = 1;
         
         // Default settings
-        this.iterations = 200;
+        this.iterations = 100;
         this.colorScheme = 'classic';
-        this.quality = 1;
-        this.zoomLevel = 1;
         
         this.resetView();
         this.initEventListeners();
-        this.initWorker();
     }
 
     setCanvasSize() {
         const container = this.canvas.parentElement;
-        const size = Math.min(container.clientWidth, 800);
+        const size = Math.min(container.clientWidth, 600);
         this.canvas.width = size;
         this.canvas.height = size;
     }
@@ -49,182 +37,82 @@ class FractalRenderer {
         let isDragging = false;
         let startX, startY;
 
-        const startInteraction = (x, y) => {
+        this.canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
-            startX = x;
-            startY = y;
-            this.selectionRect = { x1: x, y1: y, x2: x, y2: y };
-            this.canvas.style.cursor = 'crosshair';
-        };
+            startX = e.offsetX;
+            startY = e.offsetY;
+        });
 
-        const moveInteraction = (x, y) => {
-            this.updateCoordinates(x, y);
-            
+        this.canvas.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            this.selectionRect.x2 = x;
-            this.selectionRect.y2 = y;
-            this.drawSelectionBox();
-        };
+            this.drawSelectionBox(startX, startY, e.offsetX, e.offsetY);
+        });
 
-        const endInteraction = () => {
+        this.canvas.addEventListener('mouseup', (e) => {
             if (!isDragging) return;
             isDragging = false;
-            this.canvas.style.cursor = 'crosshair';
             
-            const rect = this.selectionRect;
-            const width = Math.abs(rect.x2 - rect.x1);
-            const height = Math.abs(rect.y2 - rect.y1);
+            const width = Math.abs(e.offsetX - startX);
+            const height = Math.abs(e.offsetY - startY);
             
             if (width > 10 && height > 10) {
-                this.zoomToSelection(rect);
+                this.zoomToSelection(startX, startY, e.offsetX, e.offsetY);
             }
             
-            this.selectionRect = null;
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        };
-
-        // Mouse events
-        this.canvas.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startInteraction(e.offsetX, e.offsetY);
-        });
-        
-        this.canvas.addEventListener('mousemove', (e) => {
-            e.preventDefault();
-            moveInteraction(e.offsetX, e.offsetY);
-        });
-        
-        this.canvas.addEventListener('mouseup', endInteraction);
-        this.canvas.addEventListener('mouseleave', endInteraction);
-
-        // Touch events
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const rect = this.canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            startInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
-        });
-        
-        this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const rect = this.canvas.getBoundingClientRect();
-            const touch = e.touches[0];
-            moveInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
-        });
-        
-        this.canvas.addEventListener('touchend', endInteraction);
-
-        // Zoom with mouse wheel
-        this.canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomFactor = e.deltaY > 0 ? 1.2 : 0.8;
-            this.zoomAtPoint(e.offsetX, e.offsetY, zoomFactor);
+            this.draw();
         });
 
-        // Window resize
         window.addEventListener('resize', () => {
             this.setCanvasSize();
             this.draw();
         });
     }
 
-    initWorker() {
-        this.worker.onmessage = (e) => {
-            this.isRendering = false;
-            
-            if (e.data.error) {
-                console.error('Worker error:', e.data.error);
-                return;
-            }
-            
-            const imageData = new ImageData(
-                new Uint8ClampedArray(e.data.imageData),
-                e.data.width,
-                e.data.height
-            );
-            
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = e.data.width;
-            tempCanvas.height = e.data.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.putImageData(imageData, 0, 0);
-            
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.drawImage(tempCanvas, 0, 0, this.canvas.width, this.canvas.height);
-            
-            if (this.renderQueue) {
-                this.draw(this.renderQueue);
-                this.renderQueue = null;
-            }
-        };
-
-        this.worker.onerror = (error) => {
-            console.error('Worker error:', error);
-            this.isRendering = false;
-        };
-    }
-
-    zoomToSelection(rect) {
-        const x1 = Math.min(rect.x1, rect.x2);
-        const x2 = Math.max(rect.x1, rect.x2);
-        const y1 = Math.min(rect.y1, rect.y2);
-        const y2 = Math.max(rect.y1, rect.y2);
+    zoomToSelection(x1, y1, x2, y2) {
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2);
+        const maxY = Math.max(y1, y2);
         
         this.zoomStack.push({ 
             xmin: this.xmin, 
             xmax: this.xmax, 
             ymin: this.ymin, 
-            ymax: this.ymax,
-            zoomLevel: this.zoomLevel
+            ymax: this.ymax 
         });
         
-        const newXmin = this.xmin + (x1 / this.canvas.width) * (this.xmax - this.xmin);
-        const newXmax = this.xmin + (x2 / this.canvas.width) * (this.xmax - this.xmin);
-        const newYmin = this.ymin + (y1 / this.canvas.height) * (this.ymax - this.ymin);
-        const newYmax = this.ymin + (y2 / this.canvas.height) * (this.ymax - this.ymin);
+        const newXmin = this.xmin + (minX / this.canvas.width) * (this.xmax - this.xmin);
+        const newXmax = this.xmin + (maxX / this.canvas.width) * (this.xmax - this.xmin);
+        const newYmin = this.ymin + (minY / this.canvas.height) * (this.ymax - this.ymin);
+        const newYmax = this.ymin + (maxY / this.canvas.height) * (this.ymax - this.ymin);
         
         this.xmin = newXmin;
         this.xmax = newXmax;
         this.ymin = newYmin;
         this.ymax = newYmax;
         
-        const widthRatio = (this.xmax - this.xmin) / 4; // 4 is the initial view width
-        this.zoomLevel = 1 / widthRatio;
+        this.zoomLevel = 4 / (this.xmax - this.xmin);
         this.updateZoomInfo();
-        
-        this.draw();
     }
 
-    zoomAtPoint(x, y, factor) {
-        const xPercent = x / this.canvas.width;
-        const yPercent = y / this.canvas.height;
-        
-        const currentWidth = this.xmax - this.xmin;
-        const currentHeight = this.ymax - this.ymin;
-        
-        const newWidth = currentWidth * factor;
-        const newHeight = currentHeight * factor;
-        
-        const dx = (currentWidth - newWidth) * xPercent;
-        const dy = (currentHeight - newHeight) * yPercent;
-        
-        this.zoomStack.push({ 
-            xmin: this.xmin, 
-            xmax: this.xmax, 
-            ymin: this.ymin, 
-            ymax: this.ymax,
-            zoomLevel: this.zoomLevel
-        });
-        
-        this.xmin += dx;
-        this.xmax = this.xmin + newWidth;
-        this.ymin += dy;
-        this.ymax = this.ymin + newHeight;
-        
-        this.zoomLevel *= factor;
-        this.updateZoomInfo();
-        
+    drawSelectionBox(x1, y1, x2, y2) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.draw();
+        
+        const x = Math.min(x1, x2);
+        const y = Math.min(y1, y2);
+        const width = Math.abs(x2 - x1);
+        const height = Math.abs(y2 - y1);
+        
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.strokeRect(x, y, width, height);
+        this.ctx.setLineDash([]);
+        
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.fillRect(x, y, width, height);
     }
 
     zoomOut() {
@@ -235,37 +123,9 @@ class FractalRenderer {
         this.xmax = prev.xmax;
         this.ymin = prev.ymin;
         this.ymax = prev.ymax;
-        this.zoomLevel = prev.zoomLevel;
+        
+        this.zoomLevel = 4 / (this.xmax - this.xmin);
         this.updateZoomInfo();
-        
-        this.draw();
-    }
-
-    drawSelectionBox() {
-        if (!this.selectionRect) return;
-        
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = this.canvas.width;
-        tempCanvas.height = this.canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(this.canvas, 0, 0);
-        
-        const x = Math.min(this.selectionRect.x1, this.selectionRect.x2);
-        const y = Math.min(this.selectionRect.y1, this.selectionRect.y2);
-        const width = Math.abs(this.selectionRect.x2 - this.selectionRect.x1);
-        const height = Math.abs(this.selectionRect.y2 - this.selectionRect.y1);
-        
-        tempCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        tempCtx.lineWidth = 2;
-        tempCtx.setLineDash([5, 5]);
-        tempCtx.strokeRect(x, y, width, height);
-        tempCtx.setLineDash([]);
-        
-        tempCtx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        tempCtx.fillRect(x, y, width, height);
-        
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.drawImage(tempCanvas, 0, 0);
     }
 
     updateZoomInfo() {
@@ -275,54 +135,248 @@ class FractalRenderer {
         }
     }
 
-    updateCoordinates(x, y) {
-        const coordDisplay = document.querySelector('.coordinates');
-        if (coordDisplay) {
-            const coordX = this.xmin + (x / this.canvas.width) * (this.xmax - this.xmin);
-            const coordY = this.ymin + (y / this.canvas.height) * (this.ymax - this.ymin);
-            coordDisplay.textContent = `X: ${coordX.toFixed(4)}, Y: ${coordY.toFixed(4)}`;
-        }
+    // This will be overridden by specific fractal classes
+    draw() {
+        // Base class doesn't implement drawing
+    }
+}
+
+class Mandelbrot extends FractalRenderer {
+    constructor(canvas) {
+        super(canvas);
     }
 
-    draw(options = {}) {
-        if (this.isRendering) {
-            this.renderQueue = options;
-            return;
+    resetView() {
+        this.xmin = -2.5;
+        this.xmax = 1.5;
+        this.ymin = -1.5;
+        this.ymax = 1.5;
+        this.zoomStack = [];
+        this.zoomLevel = 1;
+        this.updateZoomInfo();
+    }
+
+    draw() {
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        
+        const palette = this.getColorPalette();
+        
+        for (let y = 0; y < this.canvas.height; y++) {
+            for (let x = 0; x < this.canvas.width; x++) {
+                const cx = this.xmin + (x / this.canvas.width) * (this.xmax - this.xmin);
+                const cy = this.ymin + (y / this.canvas.height) * (this.ymax - this.ymin);
+                
+                let zx = 0;
+                let zy = 0;
+                let iter = 0;
+                
+                while (iter < this.iterations && zx * zx + zy * zy < 4) {
+                    const temp = zx * zx - zy * zy + cx;
+                    zy = 2 * zx * zy + cy;
+                    zx = temp;
+                    iter++;
+                }
+                
+                const color = this.getColor(iter, palette);
+                const idx = (y * this.canvas.width + x) * 4;
+                data[idx] = color[0];
+                data[idx + 1] = color[1];
+                data[idx + 2] = color[2];
+                data[idx + 3] = 255;
+            }
         }
+        
+        this.ctx.putImageData(imageData, 0, 0);
+    }
 
-        this.isRendering = true;
-        const quality = options.quality || this.quality;
-        const w = Math.floor(this.canvas.width * quality);
-        const h = Math.floor(this.canvas.height * quality);
-
-        const payload = {
-            type: this.type,
-            xmin: this.xmin,
-            xmax: this.xmax,
-            ymin: this.ymin,
-            ymax: this.ymax,
-            width: w,
-            height: h,
-            iterations: this.iterations,
-            colorScheme: this.colorScheme,
-            ...this.getFractalParams()
+    getColorPalette() {
+        const schemes = {
+            classic: [
+                [0,0,0], [25,7,26], [9,1,47], [4,4,73], [0,7,100],
+                [12,44,138], [24,82,177], [57,125,209], [134,181,229],
+                [211,236,248], [241,233,191], [248,201,95], [255,170,0],
+                [204,128,0], [153,87,0], [106,52,3]
+            ],
+            blue: [
+                [0,7,33], [0,20,73], [0,33,113], [0,46,153],
+                [0,59,193], [0,72,233], [20,95,255], [60,130,255],
+                [100,165,255], [140,200,255], [180,220,255], [220,240,255]
+            ],
+            fire: [
+                [0,0,0], [50,0,0], [100,10,0], [150,25,0],
+                [200,50,0], [255,75,10], [255,100,25], [255,125,50],
+                [255,150,75], [255,175,100], [255,200,125], [255,225,150]
+            ],
+            grayscale: Array.from({length: 16}, (_, i) => {
+                const v = Math.floor((i/15)*255);
+                return [v, v, v];
+            })
         };
-
-        try {
-            this.worker.postMessage(payload);
-        } catch (error) {
-            console.error('Error posting message to worker:', error);
-            this.isRendering = false;
-        }
+        
+        return schemes[this.colorScheme] || schemes.classic;
     }
 
-    getFractalParams() {
-        return {};
+    getColor(iter, palette) {
+        if (iter === this.iterations) return [0, 0, 0];
+        const colorIndex = Math.floor((iter / this.iterations) * (palette.length - 1));
+        return palette[colorIndex];
+    }
+}
+
+class Julia extends FractalRenderer {
+    constructor(canvas) {
+        super(canvas);
+        this.cx = -0.4;
+        this.cy = 0.6;
     }
 
-    destroy() {
-        if (this.worker) {
-            this.worker.terminate();
+    draw() {
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        
+        const palette = this.getColorPalette();
+        
+        for (let y = 0; y < this.canvas.height; y++) {
+            for (let x = 0; x < this.canvas.width; x++) {
+                let zx = this.xmin + (x / this.canvas.width) * (this.xmax - this.xmin);
+                let zy = this.ymin + (y / this.canvas.height) * (this.ymax - this.ymin);
+                let iter = 0;
+                
+                while (iter < this.iterations && zx * zx + zy * zy < 4) {
+                    const temp = zx * zx - zy * zy + this.cx;
+                    zy = 2 * zx * zy + this.cy;
+                    zx = temp;
+                    iter++;
+                }
+                
+                const color = this.getColor(iter, palette);
+                const idx = (y * this.canvas.width + x) * 4;
+                data[idx] = color[0];
+                data[idx + 1] = color[1];
+                data[idx + 2] = color[2];
+                data[idx + 3] = 255;
+            }
         }
+        
+        this.ctx.putImageData(imageData, 0, 0);
+    }
+
+    getColorPalette() {
+        // Same as Mandelbrot
+        const schemes = {
+            classic: [
+                [0,0,0], [25,7,26], [9,1,47], [4,4,73], [0,7,100],
+                [12,44,138], [24,82,177], [57,125,209], [134,181,229],
+                [211,236,248], [241,233,191], [248,201,95], [255,170,0],
+                [204,128,0], [153,87,0], [106,52,3]
+            ],
+            blue: [
+                [0,7,33], [0,20,73], [0,33,113], [0,46,153],
+                [0,59,193], [0,72,233], [20,95,255], [60,130,255],
+                [100,165,255], [140,200,255], [180,220,255], [220,240,255]
+            ],
+            fire: [
+                [0,0,0], [50,0,0], [100,10,0], [150,25,0],
+                [200,50,0], [255,75,10], [255,100,25], [255,125,50],
+                [255,150,75], [255,175,100], [255,200,125], [255,225,150]
+            ],
+            grayscale: Array.from({length: 16}, (_, i) => {
+                const v = Math.floor((i/15)*255);
+                return [v, v, v];
+            })
+        };
+        
+        return schemes[this.colorScheme] || schemes.classic;
+    }
+
+    getColor(iter, palette) {
+        if (iter === this.iterations) return [0, 0, 0];
+        const colorIndex = Math.floor((iter / this.iterations) * (palette.length - 1));
+        return palette[colorIndex];
+    }
+}
+
+class BurningShip extends FractalRenderer {
+    constructor(canvas) {
+        super(canvas);
+    }
+
+    resetView() {
+        this.xmin = -2.5;
+        this.xmax = 1.5;
+        this.ymin = -2.0;
+        this.ymax = 0.5;
+        this.zoomStack = [];
+        this.zoomLevel = 1;
+        this.updateZoomInfo();
+    }
+
+    draw() {
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+        
+        const palette = this.getColorPalette();
+        
+        for (let y = 0; y < this.canvas.height; y++) {
+            for (let x = 0; x < this.canvas.width; x++) {
+                const cx = this.xmin + (x / this.canvas.width) * (this.xmax - this.xmin);
+                const cy = this.ymin + (y / this.canvas.height) * (this.ymax - this.ymin);
+                
+                let zx = 0;
+                let zy = 0;
+                let iter = 0;
+                
+                while (iter < this.iterations && zx * zx + zy * zy < 4) {
+                    const temp = zx * zx - zy * zy + cx;
+                    zy = Math.abs(2 * zx * zy) + cy;
+                    zx = Math.abs(temp);
+                    iter++;
+                }
+                
+                const color = this.getColor(iter, palette);
+                const idx = (y * this.canvas.width + x) * 4;
+                data[idx] = color[0];
+                data[idx + 1] = color[1];
+                data[idx + 2] = color[2];
+                data[idx + 3] = 255;
+            }
+        }
+        
+        this.ctx.putImageData(imageData, 0, 0);
+    }
+
+    getColorPalette() {
+        // Same as Mandelbrot
+        const schemes = {
+            classic: [
+                [0,0,0], [25,7,26], [9,1,47], [4,4,73], [0,7,100],
+                [12,44,138], [24,82,177], [57,125,209], [134,181,229],
+                [211,236,248], [241,233,191], [248,201,95], [255,170,0],
+                [204,128,0], [153,87,0], [106,52,3]
+            ],
+            blue: [
+                [0,7,33], [0,20,73], [0,33,113], [0,46,153],
+                [0,59,193], [0,72,233], [20,95,255], [60,130,255],
+                [100,165,255], [140,200,255], [180,220,255], [220,240,255]
+            ],
+            fire: [
+                [0,0,0], [50,0,0], [100,10,0], [150,25,0],
+                [200,50,0], [255,75,10], [255,100,25], [255,125,50],
+                [255,150,75], [255,175,100], [255,200,125], [255,225,150]
+            ],
+            grayscale: Array.from({length: 16}, (_, i) => {
+                const v = Math.floor((i/15)*255);
+                return [v, v, v];
+            })
+        };
+        
+        return schemes[this.colorScheme] || schemes.classic;
+    }
+
+    getColor(iter, palette) {
+        if (iter === this.iterations) return [0, 0, 0];
+        const colorIndex = Math.floor((iter / this.iterations) * (palette.length - 1));
+        return palette[colorIndex];
     }
 }
