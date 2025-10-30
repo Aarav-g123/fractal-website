@@ -1,2 +1,1 @@
-# fractal-website
-Go to [the website](https://complexanalysis.netlify.app)
+[fractal-web](https://fractal-website.netlify.app)

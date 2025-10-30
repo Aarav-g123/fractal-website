@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Explorer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Fractal Explorer</h1>
+        </header>
+
+        <nav class="fractal-nav">
+            <div class="nav-section">
+                <h3>Classic Sets</h3>
+                <div class="nav-buttons">
+                    <button class="nav-btn active" data-fractal="mandelbrot">Mandelbrot</button>
+                    <button class="nav-btn" data-fractal="julia">Julia Set</button>
+                    <button class="nav-btn" data-fractal="burning-ship">Burning Ship</button>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <h3>IFS Fractals</h3>
+                <div class="nav-buttons">
+                    <button class="nav-btn" data-fractal="sierpinski">Sierpinski</button>
+                    <button class="nav-btn" data-fractal="barnsley">Barnsley Fern</button>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <h3>Newton Fractals</h3>
+                <div class="nav-buttons">
+                    <button class="nav-btn" data-fractal="newton">Newton Set</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="canvas-container">
+                <canvas id="fractalCanvas"></canvas>
+                <div class="canvas-overlay">
+                    <div class="zoom-info">Zoom: 1.00x</div>
+                </div>
+            </div>
+
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h4>Rendering</h4>
+                    <div class="control-group">
+                        <label for="iterations">Iterations: <span id="iterValue">100</span></label>
+                        <input type="range" id="iterations" min="50" max="1000" value="100">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="colorScheme">Color Scheme</label>
+                        <select id="colorScheme">
+                            <option value="classic">Classic</option>
+                            <option value="blue">Ocean Blue</option>
+                            <option value="fire">Fire</option>
+                            <option value="grayscale">Grayscale</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-section julia-controls hidden">
+                    <h4>Julia Parameters</h4>
+                    <div class="control-group">
+                        <label for="juliaReal">Real: <span id="juliaRealValue">-0.4</span></label>
+                        <input type="range" id="juliaReal" min="-1" max="1" step="0.01" value="-0.4">
+                    </div>
+                    <div class="control-group">
+                        <label for="juliaImag">Imaginary: <span id="juliaImagValue">0.6</span></label>
+                        <input type="range" id="juliaImag" min="-1" max="1" step="0.01" value="0.6">
+                    </div>
+                    <button id="randomJulia" class="secondary-btn">Randomize</button>
+                </div>
+
+                <div class="panel-section">
+                    <h4>View Controls</h4>
+                    <div class="control-buttons">
+                        <button id="resetView" class="primary-btn">Reset View</button>
+                        <button id="zoomOut" class="secondary-btn">Zoom Out</button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <script src="js/complex.js"></script>
+    <script src="js/fractal-renderer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
